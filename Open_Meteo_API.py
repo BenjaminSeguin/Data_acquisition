@@ -385,24 +385,23 @@ class OpenMeteoAPI:
         print(f"✓ {len(records)} records saved to {filename}")
 
 
-# Usage examples
 if __name__ == "__main__":
     api = OpenMeteoAPI()
     
     # Output folder
     output_folder = "temperature_json"
     
-    # Example 1: Single city - hourly data
+    # Single city - hourly data
     print("=== Getting hourly forecast data ===")
     forecast_hourly = api.get_forecast_hourly(48.8566, 2.3522, days=7)
     api.save_json(forecast_hourly, f'{output_folder}/paris_forecast_hourly.json')
     
-    # Example 2: Single city - daily data
+    # Single city - daily data
     print("\n=== Getting daily forecast data ===")
     forecast_daily = api.get_forecast_daily(48.8566, 2.3522, days=7)
     api.save_json(forecast_daily, f'{output_folder}/paris_forecast_daily.json')
     
-    # Example 3: Single city - historical daily data (10 years)
+    # Single city - historical daily data (10 years)
     print("\n=== Getting 10 years of daily historical data ===")
     end_date = datetime.now().strftime("%Y-%m-%d")
     start_date = (datetime.now() - timedelta(days=365*10)).strftime("%Y-%m-%d")
@@ -413,7 +412,7 @@ if __name__ == "__main__":
     )
     api.save_json(historical_daily, f'{output_folder}/paris_historical_daily_10y.json')
     
-    # Example 4: Multiple cities - daily data (10 years)
+    # Multiple cities - daily data (10 years)
     print("\n=== Getting data for multiple cities ===")
     cities = [
         {'name': 'Paris', 'latitude': 48.8566, 'longitude': 2.3522},
@@ -436,7 +435,7 @@ if __name__ == "__main__":
     # Or save all together
     api.save_json(multi_city_data, f'{output_folder}/all_cities_daily_10y.json')
     
-    # Example 5: Process data using JMESPath
+    # Process data using JMESPath
     print("\n=== Processing data with JMESPath ===")
     
     # Extract records from all cities
@@ -447,12 +446,12 @@ if __name__ == "__main__":
     # Save processed records as JSON
     api.save_records_to_json(all_records, f'{output_folder}/processed_records.json')
     
-    # Example 6: Save to SQLite database
+    # Save to SQLite database
     print("\n=== Saving to SQLite database ===")
     db_path = f'{output_folder}/weather_data.db'
     api.records_to_sql(all_records, 'weather_daily', db_path)
     
-    # Example 7: Extract specific variables using JMESPath
+    # Extract specific variables using JMESPath
     print("\n=== Extract specific variables ===")
     paris_data = multi_city_data['Paris']
     temp_precip = api.extract_specific_variables(
