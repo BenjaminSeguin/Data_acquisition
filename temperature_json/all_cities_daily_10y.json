@@ -2,7 +2,7 @@
   "Paris": {
     "latitude": 48.822495,
     "longitude": 2.2881355,
-    "generationtime_ms": 24.86288547515869,
+    "generationtime_ms": 15.201687812805176,
     "utc_offset_seconds": 3600,
     "timezone": "Europe/Paris",
     "timezone_abbreviation": "GMT+1",
@@ -18285,7 +18285,7 @@
   "London": {
     "latitude": 51.493847,
     "longitude": -0.1630249,
-    "generationtime_ms": 15.480279922485352,
+    "generationtime_ms": 347.2529649734497,
     "utc_offset_seconds": 0,
     "timezone": "Europe/London",
     "timezone_abbreviation": "GMT",
@@ -36568,7 +36568,7 @@
   "Berlin": {
     "latitude": 52.54833,
     "longitude": 13.407822,
-    "generationtime_ms": 20.359158515930176,
+    "generationtime_ms": 269.4113254547119,
     "utc_offset_seconds": 3600,
     "timezone": "Europe/Berlin",
     "timezone_abbreviation": "GMT+1",
@@ -54851,7 +54851,7 @@
   "Madrid": {
     "latitude": 40.386642,
     "longitude": -3.6760864,
-    "generationtime_ms": 14.777779579162598,
+    "generationtime_ms": 360.95714569091797,
     "utc_offset_seconds": 3600,
     "timezone": "Europe/Madrid",
     "timezone_abbreviation": "GMT+1",
@@ -73134,7 +73134,7 @@
   "Rome": {
     "latitude": 41.933216,
     "longitude": 12.55814,
-    "generationtime_ms": 17.06671714782715,
+    "generationtime_ms": 287.711501121521,
     "utc_offset_seconds": 3600,
     "timezone": "Europe/Rome",
     "timezone_abbreviation": "GMT+1",
