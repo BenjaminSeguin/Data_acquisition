@@ -59,6 +59,30 @@ temperature, wind speed, precipitations, and cloud cover.
 
 The code is organized into 4 classes:
 
+```
+┌─────────────────────────────────────────────┐
+│           OpenMeteoAPI (Main)               │
+│  ┌──────────────────────────────────────┐   │
+│  │  - fetcher (DataFetcher)             │   │
+│  │  - processor (DataProcessor)         │   │
+│  │  - storage (DataStorage)             │   │
+│  └──────────────────────────────────────┘   │
+└─────────────────────────────────────────────┘
+            │           │           │
+            ▼           ▼           ▼
+    ┌───────────┐  ┌──────────┐  ┌──────────┐
+    │DataFetcher│  │Processor │  │ Storage  │
+    ├───────────┤  ├──────────┤  ├──────────┤
+    │ Fetch API │  │Parse JSON│  │Save Files│
+    │   data    │  │  to flat │  │Save to DB│
+    │           │  │  records │  │Query DB  │
+    └───────────┘  └──────────┘  └──────────┘
+         │              │              │
+         ▼              ▼              ▼
+    JSON from       Records        SQLite DB
+      API           (list)         & JSON
+```
+
 ### 1. DataFetcher
 Handles all API requests.
 
