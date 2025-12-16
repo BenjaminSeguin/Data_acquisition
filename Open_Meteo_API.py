@@ -21,11 +21,6 @@ import jmespath
 import sqlite3
 import os
 
-
-# ============================================================================
-# DATA FETCHER - Handles all API interactions
-# ============================================================================
-
 class DataFetcher:
     """
     Handles all API requests to Open-Meteo services.
@@ -38,14 +33,38 @@ class DataFetcher:
     def __init__(self):
         self.forecast_url = "https://api.open-meteo.com/v1/forecast"
         self.archive_url = "https://archive-api.open-meteo.com/v1/archive"
-        self.default_variables = [
+        
+        # Hourly variables
+        self.default_hourly_variables = [
             "temperature_2m",
             "precipitation",
             "wind_speed_10m",
-            "relative_humidity_2m"
+            "wind_speed_100m",
+            "wind_direction_10m",
+            "relative_humidity_2m",
+            "surface_pressure",
+            "cloud_cover",
+            "shortwave_radiation",
+            "direct_radiation",
+            "diffuse_radiation"
+        ]
+        
+        # Daily variables
+        self.default_daily_variables = [
+            "temperature_2m_max",
+            "temperature_2m_min",
+            "temperature_2m_mean",
+            "precipitation_sum",
+            "precipitation_hours",
+            "wind_speed_10m_max",
+            "wind_gusts_10m_max",
+            "wind_direction_10m_dominant",
+            "shortwave_radiation_sum",
+            "sunshine_duration",
+            "daylight_duration"
         ]
     
-    def fetch_forecast(self, latitude, longitude, variables=None, days=7):
+    def fetch_forecast_hourly(self, latitude, longitude, variables=None, days=7):
         """
         Fetch hourly forecast data for a single location.
         
@@ -59,7 +78,7 @@ class DataFetcher:
             dict: JSON response from API
         """
         if variables is None:
-            variables = self.default_variables
+            variables = self.default_hourly_variables
         
         params = {
             "latitude": latitude,
@@ -72,7 +91,34 @@ class DataFetcher:
         response = requests.get(self.forecast_url, params=params)
         return response.json()
     
-    def fetch_historical(self, latitude, longitude, start_date, end_date, variables=None):
+    def fetch_forecast_daily(self, latitude, longitude, variables=None, days=7):
+        """
+        Fetch daily forecast data for a single location.
+        
+        Args:
+            latitude (float): Location latitude
+            longitude (float): Location longitude
+            variables (list, optional): Weather variables to fetch
+            days (int): Number of forecast days
+        
+        Returns:
+            dict: JSON response from API
+        """
+        if variables is None:
+            variables = self.default_daily_variables
+        
+        params = {
+            "latitude": latitude,
+            "longitude": longitude,
+            "daily": ",".join(variables),
+            "forecast_days": days,
+            "timezone": "auto"
+        }
+        
+        response = requests.get(self.forecast_url, params=params)
+        return response.json()
+    
+    def fetch_historical_hourly(self, latitude, longitude, start_date, end_date, variables=None):
         """
         Fetch hourly historical data for a single location.
         
@@ -87,7 +133,7 @@ class DataFetcher:
             dict: JSON response from API
         """
         if variables is None:
-            variables = self.default_variables
+            variables = self.default_hourly_variables
         
         params = {
             "latitude": latitude,
@@ -101,7 +147,36 @@ class DataFetcher:
         response = requests.get(self.archive_url, params=params)
         return response.json()
     
-    def fetch_multiple_locations(self, locations, start_date, end_date, variables=None):
+    def fetch_historical_daily(self, latitude, longitude, start_date, end_date, variables=None):
+        """
+        Fetch daily historical data for a single location.
+        
+        Args:
+            latitude (float): Location latitude
+            longitude (float): Location longitude
+            start_date (str): Start date in YYYY-MM-DD format
+            end_date (str): End date in YYYY-MM-DD format
+            variables (list, optional): Weather variables to fetch
+        
+        Returns:
+            dict: JSON response from API
+        """
+        if variables is None:
+            variables = self.default_daily_variables
+        
+        params = {
+            "latitude": latitude,
+            "longitude": longitude,
+            "start_date": start_date,
+            "end_date": end_date,
+            "daily": ",".join(variables),
+            "timezone": "auto"
+        }
+        
+        response = requests.get(self.archive_url, params=params)
+        return response.json()
+    
+    def fetch_multiple_locations_hourly(self, locations, start_date, end_date, variables=None):
         """
         Fetch hourly historical data for multiple locations.
         
@@ -117,8 +192,36 @@ class DataFetcher:
         results = {}
         
         for location in locations:
-            print(f"Fetching data for {location['name']}...")
-            data = self.fetch_historical(
+            print(f"Fetching hourly data for {location['name']}...")
+            data = self.fetch_historical_hourly(
+                location['latitude'],
+                location['longitude'],
+                start_date,
+                end_date,
+                variables
+            )
+            results[location['name']] = data
+        
+        return results
+    
+    def fetch_multiple_locations_daily(self, locations, start_date, end_date, variables=None):
+        """
+        Fetch daily historical data for multiple locations.
+        
+        Args:
+            locations (list): List of dicts with 'name', 'latitude', 'longitude'
+            start_date (str): Start date in YYYY-MM-DD format
+            end_date (str): End date in YYYY-MM-DD format
+            variables (list, optional): Weather variables to fetch
+        
+        Returns:
+            dict: Dictionary with location names as keys and JSON data as values
+        """
+        results = {}
+        
+        for location in locations:
+            print(f"Fetching daily data for {location['name']}")
+            data = self.fetch_historical_daily(
                 location['latitude'],
                 location['longitude'],
                 start_date,
@@ -129,20 +232,10 @@ class DataFetcher:
         
         return results
 
-
-# ============================================================================
-# DATA PROCESSOR - Transforms JSON to structured records
-# ============================================================================
-
 class DataProcessor:
     """
     Processes API JSON responses into structured records.
-    
-    Uses JMESPath for flexible JSON querying and transformation.
-    
-    To add new processing patterns:
-    1. Create new JMESPath queries in extract methods
-    2. Add transformation logic in new methods
+    Uses JMESPath for JSON querying and transformation.
     """
     
     def extract_metadata(self, json_data):
@@ -218,7 +311,62 @@ class DataProcessor:
         
         return records
     
-    def extract_specific_variables(self, json_data, variables):
+    def extract_daily_records(self, json_data, location_name=None):
+        """
+        Convert daily JSON data to flat records list.
+        
+        Each record is a dictionary with:
+        - date: date string
+        - location metadata (city, lat, lon, timezone, elevation)
+        - all weather variables
+        
+        Args:
+            json_data (dict): API response JSON
+            location_name (str, optional): Name to add to each record
+        
+        Returns:
+            list: List of record dictionaries ready for database insertion
+        """
+        # Validate response
+        if json_data.get('error'):
+            print(f"Error: {json_data.get('reason')}")
+            return []
+        
+        # Extract metadata
+        metadata = self.extract_metadata(json_data)
+        
+        # Get daily data section
+        daily_data = json_data.get('daily', {})
+        if not daily_data:
+            print("No daily data found")
+            return []
+        
+        # Get time array
+        dates = daily_data.get('time', [])
+        
+        # Build records
+        records = []
+        for i, date in enumerate(dates):
+            # Start with date and metadata
+            record = {
+                'date': date,
+                'city': location_name,
+                'latitude': metadata.get('latitude'),
+                'longitude': metadata.get('longitude'),
+                'timezone': metadata.get('timezone'),
+                'elevation': metadata.get('elevation')
+            }
+            
+            # Add all weather variables
+            for variable, values in daily_data.items():
+                if variable != 'time' and i < len(values):
+                    record[variable] = values[i]
+            
+            records.append(record)
+        
+        return records
+    
+    def extract_specific_variables(self, json_data, variables, data_type='hourly'):
         """
         Extract only specific variables using JMESPath.
         
@@ -227,38 +375,53 @@ class DataProcessor:
         Args:
             json_data (dict): API response JSON
             variables (list): List of variable names to extract
+            data_type (str): 'hourly' or 'daily'
         
         Returns:
             dict: Dictionary with requested variables and timestamps
         """
-        var_queries = ", ".join([f"{var}: hourly.{var}" for var in variables])
-        query = f"{{{var_queries}, time: hourly.time}}"
+        var_queries = ", ".join([f"{var}: {data_type}.{var}" for var in variables])
+        query = f"{{{var_queries}, time: {data_type}.time}}"
         
         return jmespath.search(query, json_data)
     
-    def process_multiple_locations(self, multi_location_data):
+    def process_multiple_locations_hourly(self, multi_location_data):
         """
-        Process multiple locations into combined records list.
+        Process multiple locations hourly data into combined records list.
         
         Args:
             multi_location_data (dict): Dictionary with location names as keys
         
         Returns:
-            list: Combined list of all records from all locations
+            list: Combined list of all hourly records from all locations
         """
         all_records = []
         
         for location_name, json_data in multi_location_data.items():
             records = self.extract_hourly_records(json_data, location_name)
             all_records.extend(records)
-            print(f"✓ Processed {len(records)} records for {location_name}")
+            print(f"Processed {len(records)} hourly records for {location_name}")
         
         return all_records
-
-
-# ============================================================================
-# DATA STORAGE - Handles file and database operations
-# ============================================================================
+    
+    def process_multiple_locations_daily(self, multi_location_data):
+        """
+        Process multiple locations daily data into combined records list.
+        
+        Args:
+            multi_location_data (dict): Dictionary with location names as keys
+        
+        Returns:
+            list: Combined list of all daily records from all locations
+        """
+        all_records = []
+        
+        for location_name, json_data in multi_location_data.items():
+            records = self.extract_daily_records(json_data, location_name)
+            all_records.extend(records)
+            print(f"Processed {len(records)} daily records for {location_name}")
+        
+        return all_records
 
 class DataStorage:
     """
@@ -313,7 +476,7 @@ class DataStorage:
         """
         Save records to SQLite database.
         
-        Creates table dynamically based on record structure.
+        Creates table based on record structure.
         
         Args:
             records (list): List of record dictionaries
@@ -365,34 +528,18 @@ class DataStorage:
         
         return results
 
-
-# ============================================================================
-# MAIN API CLASS - Combines all components
-# ============================================================================
-
+# Main API Class
 class OpenMeteoAPI:
     """
     Main interface for weather data collection and processing.
     
     This class combines the DataFetcher, DataProcessor, and DataStorage
-    components to provide a simple, high-level API.
+    components.
     
     Basic workflow:
     1. Fetch data using fetch_* methods
     2. Process data using process_* methods
     3. Save data using save_* methods
-    
-    Example:
-        api = OpenMeteoAPI()
-        
-        # Fetch data
-        data = api.fetch_historical(48.8566, 2.3522, '2024-01-01', '2024-12-31')
-        
-        # Process to records
-        records = api.process_to_records(data, 'Paris')
-        
-        # Save to database
-        api.save_to_database(records, 'weather_data', 'weather.db')
     """
     
     def __init__(self, output_folder='weather_data'):
@@ -407,35 +554,60 @@ class OpenMeteoAPI:
         self.storage = DataStorage()
         self.output_folder = output_folder
     
-    # === Fetch Methods (delegate to DataFetcher) ===
+    # Fetch Methods 
     
-    def fetch_forecast(self, latitude, longitude, variables=None, days=7):
-        """Fetch hourly forecast data. See DataFetcher.fetch_forecast for details."""
-        return self.fetcher.fetch_forecast(latitude, longitude, variables, days)
+    # Hourly methods
+    def fetch_forecast_hourly(self, latitude, longitude, variables=None, days=7):
+        """Fetch hourly forecast data. See DataFetcher.fetch_forecast_hourly for details."""
+        return self.fetcher.fetch_forecast_hourly(latitude, longitude, variables, days)
     
-    def fetch_historical(self, latitude, longitude, start_date, end_date, variables=None):
-        """Fetch hourly historical data. See DataFetcher.fetch_historical for details."""
-        return self.fetcher.fetch_historical(latitude, longitude, start_date, end_date, variables)
+    def fetch_historical_hourly(self, latitude, longitude, start_date, end_date, variables=None):
+        """Fetch hourly historical data. See DataFetcher.fetch_historical_hourly for details."""
+        return self.fetcher.fetch_historical_hourly(latitude, longitude, start_date, end_date, variables)
     
-    def fetch_multiple_locations(self, locations, start_date, end_date, variables=None):
-        """Fetch data for multiple locations. See DataFetcher.fetch_multiple_locations for details."""
-        return self.fetcher.fetch_multiple_locations(locations, start_date, end_date, variables)
+    def fetch_multiple_locations_hourly(self, locations, start_date, end_date, variables=None):
+        """Fetch hourly data for multiple locations. See DataFetcher.fetch_multiple_locations_hourly for details."""
+        return self.fetcher.fetch_multiple_locations_hourly(locations, start_date, end_date, variables)
     
-    # === Process Methods (delegate to DataProcessor) ===
+    # Daily methods
+    def fetch_forecast_daily(self, latitude, longitude, variables=None, days=7):
+        """Fetch daily forecast data. See DataFetcher.fetch_forecast_daily for details."""
+        return self.fetcher.fetch_forecast_daily(latitude, longitude, variables, days)
     
-    def process_to_records(self, json_data, location_name=None):
-        """Convert JSON to records list. See DataProcessor.extract_hourly_records for details."""
+    def fetch_historical_daily(self, latitude, longitude, start_date, end_date, variables=None):
+        """Fetch daily historical data. See DataFetcher.fetch_historical_daily for details."""
+        return self.fetcher.fetch_historical_daily(latitude, longitude, start_date, end_date, variables)
+    
+    def fetch_multiple_locations_daily(self, locations, start_date, end_date, variables=None):
+        """Fetch daily data for multiple locations. See DataFetcher.fetch_multiple_locations_daily for details."""
+        return self.fetcher.fetch_multiple_locations_daily(locations, start_date, end_date, variables)
+    
+    # Process Methods
+    
+    # Hourly processing
+    def process_to_records_hourly(self, json_data, location_name=None):
+        """Convert hourly JSON to records list. See DataProcessor.extract_hourly_records for details."""
         return self.processor.extract_hourly_records(json_data, location_name)
     
-    def process_multiple_locations(self, multi_location_data):
-        """Process multiple locations. See DataProcessor.process_multiple_locations for details."""
-        return self.processor.process_multiple_locations(multi_location_data)
+    def process_multiple_locations_hourly(self, multi_location_data):
+        """Process multiple locations hourly data. See DataProcessor.process_multiple_locations_hourly for details."""
+        return self.processor.process_multiple_locations_hourly(multi_location_data)
     
-    def extract_variables(self, json_data, variables):
+    # Daily processing
+    def process_to_records_daily(self, json_data, location_name=None):
+        """Convert daily JSON to records list. See DataProcessor.extract_daily_records for details."""
+        return self.processor.extract_daily_records(json_data, location_name)
+    
+    def process_multiple_locations_daily(self, multi_location_data):
+        """Process multiple locations daily data. See DataProcessor.process_multiple_locations_daily for details."""
+        return self.processor.process_multiple_locations_daily(multi_location_data)
+    
+    # Variable extraction
+    def extract_variables(self, json_data, variables, data_type='hourly'):
         """Extract specific variables. See DataProcessor.extract_specific_variables for details."""
-        return self.processor.extract_specific_variables(json_data, variables)
+        return self.processor.extract_specific_variables(json_data, variables, data_type)
     
-    # === Storage Methods (delegate to DataStorage) ===
+    # Storage Methods
     
     def save_json(self, data, filename):
         """Save to JSON file. See DataStorage.save_json for details."""
@@ -452,18 +624,12 @@ class OpenMeteoAPI:
         db_path = os.path.join(self.output_folder, db_filename)
         return self.storage.query_sqlite(db_path, query)
 
-
-
-
-# ============================================================================
-# USAGE EXAMPLES
-# ============================================================================
-
+# Create daily and hourly databases
 if __name__ == "__main__":
     # Initialize API with output folder
-    api = OpenMeteoAPI(output_folder='open_meteo_data')
+    api = OpenMeteoAPI(output_folder='energy_weather_data')
     
-    # Define date range (last 1 year for testing - change to 10 years if needed)
+    # Define date range 
     end_date = datetime.now().strftime("%Y-%m-%d")
     start_date = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
     
@@ -476,40 +642,44 @@ if __name__ == "__main__":
         {'name': 'Lille', 'latitude': 50.6292, 'longitude': 3.0573}
     ]
     
-    # Example 1: Fetch and save raw JSON for multiple locations
-    print("=== Fetching hourly data for multiple locations ===")
-    multi_location_data = api.fetch_multiple_locations(locations, start_date, end_date)
+    # Collect hourly data
+    print("\nFetching hourly data")
+    hourly_data = api.fetch_multiple_locations_hourly(locations, start_date, end_date)
     
-    # Save raw JSON for each location
-    for location_name, data in multi_location_data.items():
-        api.save_json(data, f'{location_name.lower()}_hourly.json')
+    print("Processing hourly records")
+    hourly_records = api.process_multiple_locations_hourly(hourly_data)
+    api.save_to_database(hourly_records, 'weather_hourly', 'energy_weather_hourly.db')
     
-    # Example 2: Process to structured records
-    print("\n=== Processing to structured records ===")
-    all_records = api.process_multiple_locations(multi_location_data)
-    print(f"Total records: {len(all_records)}")
-    print(f"Sample record: {all_records[0]}")
+    # Collect daily data
+    print("Fetching daily data")
+    daily_data = api.fetch_multiple_locations_daily(locations, start_date, end_date)
     
-    # Example 3: Save processed records to JSON
-    print("\n=== Saving processed records ===")
-    api.save_json(all_records, 'all_locations_processed.json')
+    print("Processing daily records")
+    daily_records = api.process_multiple_locations_daily(daily_data)
+    api.save_to_database(daily_records, 'weather_daily', 'energy_weather_daily.db')
     
-    # Example 4: Save to SQLite database
-    print("\n=== Saving to database ===")
-    api.save_to_database(all_records, 'weather_hourly')
+    # Remove duplicates from both databases
+    print("\nRemoving duplicates")
     
-    # Example 5: Query database
-    print("\n=== Querying database ===")
-    results = api.query_database("SELECT city, COUNT(*) as record_count FROM weather_hourly GROUP BY city")
-    print("Records per city:")
-    for row in results:
-        print(f"  {row[0]}: {row[1]} records")
+    for db_file, table, time_col in [('energy_weather_hourly.db', 'weather_hourly', 'datetime'), 
+                                      ('energy_weather_daily.db', 'weather_daily', 'date')]:
+        conn = sqlite3.connect(f'energy_weather_data/{db_file}')
+        cursor = conn.cursor()
+        
+        cursor.execute(f"""
+            DELETE FROM {table} 
+            WHERE rowid NOT IN (
+                SELECT MIN(rowid) 
+                FROM {table} 
+                GROUP BY {time_col}, city
+            )
+        """)
+        
+        deleted = cursor.rowcount
+        if deleted > 0:
+            print(f"Removed {deleted} duplicates from {table}")
+        
+        conn.commit()
+        conn.close()
     
-    # Example 6: Single location with custom variables
-    print("\n=== Fetching single location with custom variables ===")
-    custom_vars = ['temperature_2m', 'wind_speed_10m', 'precipitation']
-    paris_data = api.fetch_historical(48.8566, 2.3522, start_date, end_date, custom_vars)
-    paris_records = api.process_to_records(paris_data, 'Paris')
-    print(f"Paris records with custom variables: {len(paris_records)}")
-    
-    print("\nAll examples complete!")
+    print("\nDatabases created.")
