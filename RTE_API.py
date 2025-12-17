@@ -163,7 +163,7 @@ class RTEAPI:
                     if final_name:
                         new_filename = os.path.join(self.download_folder, final_name)
                     else:
-                        new_filename = os.path.join(self.download_folder, f"RTE_{target_date_str}.xls")
+                        new_filename = os.path.join(self.download_folder, f"RTE_{target_date_str}")
                     
                     extracted_path = os.path.join(self.download_folder, original_filename)
                     
