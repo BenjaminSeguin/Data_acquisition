@@ -230,7 +230,7 @@ class DataFetcher:
                 variables
             )
             results[location['name']] = data
-            time.sleep(20)
+            time.sleep(31)
         
         return results
 
@@ -632,11 +632,11 @@ if __name__ == "__main__":
     api = OpenMeteoAPI(output_folder='energy_weather_data')
     
     # Define date range 
-    end_date_hour = datetime.now().strftime("%Y-%m-%d")
-    start_date_hour = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
+    start_date_hour = "2024-01-01"
+    end_date_hour = "2024-12-31"
 
-    end_date_day = datetime.now().strftime("%Y-%m-%d")
-    start_date_day = (datetime.now() - timedelta(days=10*365)).strftime("%Y-%m-%d")
+    start_date_day = "2015-01-01"
+    end_date_day = "2024-12-31" 
     
     # Define locations
     locations = [
