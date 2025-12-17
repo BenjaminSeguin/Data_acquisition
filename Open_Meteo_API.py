@@ -20,6 +20,7 @@ from datetime import datetime, timedelta
 import jmespath
 import sqlite3
 import os
+import time
 
 class DataFetcher:
     """
@@ -229,6 +230,7 @@ class DataFetcher:
                 variables
             )
             results[location['name']] = data
+            time.sleep(20)
         
         return results
 
@@ -630,8 +632,11 @@ if __name__ == "__main__":
     api = OpenMeteoAPI(output_folder='energy_weather_data')
     
     # Define date range 
-    end_date = datetime.now().strftime("%Y-%m-%d")
-    start_date = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
+    end_date_hour = datetime.now().strftime("%Y-%m-%d")
+    start_date_hour = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
+
+    end_date_day = datetime.now().strftime("%Y-%m-%d")
+    start_date_day = (datetime.now() - timedelta(days=10*365)).strftime("%Y-%m-%d")
     
     # Define locations
     locations = [
@@ -644,15 +649,17 @@ if __name__ == "__main__":
     
     # Collect hourly data
     print("\nFetching hourly data")
-    hourly_data = api.fetch_multiple_locations_hourly(locations, start_date, end_date)
+    hourly_data = api.fetch_multiple_locations_hourly(locations, start_date_hour, end_date_hour)
     
     print("Processing hourly records")
     hourly_records = api.process_multiple_locations_hourly(hourly_data)
     api.save_to_database(hourly_records, 'weather_hourly', 'energy_weather_hourly.db')
+
+    time.sleep(60)
     
     # Collect daily data
     print("Fetching daily data")
-    daily_data = api.fetch_multiple_locations_daily(locations, start_date, end_date)
+    daily_data = api.fetch_multiple_locations_daily(locations, start_date_day, end_date_day)
     
     print("Processing daily records")
     daily_records = api.process_multiple_locations_daily(daily_data)
