@@ -175,7 +175,7 @@ class RTEDataStorage:
             else:
                 columns.append(f"{key} REAL")
         
-        # Create table with datetime as primary key for deduplication
+        # Create table with datetime as Primary Key
         create_query = f"""
             CREATE TABLE IF NOT EXISTS {table_name} (
                 {', '.join(columns)},
@@ -186,8 +186,7 @@ class RTEDataStorage:
         try:
             cursor.execute(create_query)
         except sqlite3.OperationalError:
-            # Table might exist without primary key, recreate it
-            cursor.execute(f"DROP TABLE IF EXISTS {table_name}")
+            cursor.execute(f"DROP TABLE IF EXISTS {table_name}") # Drop existing table
             cursor.execute(create_query)
     
     @staticmethod

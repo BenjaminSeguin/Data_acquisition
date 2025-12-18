@@ -29,6 +29,20 @@ if duplicates:
     print(f"\n{len(duplicates)} duplicate entries found:")
     for dup in duplicates[:5]:
         print(f"  {dup[0]}: {dup[1]} occurrences")
+    
+    # Remove duplicates, keeping only the first occurrence
+    print(f"\nRemoving duplicates (keeping first occurrence)...")
+    cursor.execute(f"""
+        DELETE FROM {table}
+        WHERE rowid NOT IN (
+            SELECT MIN(rowid)
+            FROM {table}
+            GROUP BY {time_col}
+        )
+    """)
+    removed = cursor.rowcount
+    conn.commit()
+    print(f"Removed {removed} duplicate records")
 else:
     print(f"No duplicates found")
 
