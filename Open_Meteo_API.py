@@ -1,19 +1,3 @@
-"""
-OpenMeteo API Client - Hourly Weather Data Collection and Processing
-
-This module provides a modular interface for:
-1. Fetching hourly weather data from Open-Meteo API
-2. Processing JSON responses using JMESPath
-3. Converting data to structured records for database storage
-4. Saving data to JSON files and SQLite databases
-
-Main Components:
-- DataFetcher: Handles all API requests
-- DataProcessor: Processes JSON to structured records
-- DataStorage: Manages file and database operations
-- OpenMeteoAPI: Main interface combining all components
-"""
-
 import requests
 import json
 from datetime import datetime, timedelta
