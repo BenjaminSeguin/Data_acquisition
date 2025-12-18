@@ -1,4 +1,6 @@
-#Dictionnaries to link parameter codes (from Transparency ENTSOE API) with actual definitions
+# Dictionnaries to link parameter codes (from Transparency ENTSOE API) with actual definitions
+# List of tables can be found here: https://transparencyplatform.zendesk.com/hc/en-us/articles/15856744319380-Available-Parameters
+
 dic_documentType = {
     "A09": "Finalized schedule",
     "A11": "Aggregated energy data report",
