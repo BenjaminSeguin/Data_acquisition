@@ -5,6 +5,7 @@ import jmespath
 import sqlite3
 import os
 import time
+from zoneinfo import ZoneInfo
 
 class DataFetcher:
     """
@@ -70,7 +71,7 @@ class DataFetcher:
             "longitude": longitude,
             "hourly": ",".join(variables),
             "forecast_days": days,
-            "timezone": "auto"
+            "timezone": "UTC"
         }
         
         response = requests.get(self.forecast_url, params=params)
@@ -126,7 +127,7 @@ class DataFetcher:
             "start_date": start_date,
             "end_date": end_date,
             "hourly": ",".join(variables),
-            "timezone": "auto"
+            "timezone": "UTC"
         }
         
         response = requests.get(self.archive_url, params=params)
@@ -224,16 +225,13 @@ class DataProcessor:
     Uses JMESPath for JSON querying and transformation.
     """
     
+    def __init__(self, timezone="Europe/Paris"):
+        self.timezone = timezone
+        self.local_tz = ZoneInfo(timezone)
+        self.utc_tz = ZoneInfo("UTC")
+    
     def extract_metadata(self, json_data):
-        """
-        Extract location metadata from API response.
-        
-        Args:
-            json_data (dict): API response JSON
-        
-        Returns:
-            dict: Metadata including latitude, longitude, timezone, elevation
-        """
+        """Extract location metadata from API response."""
         query = """{
             latitude: latitude,
             longitude: longitude,
@@ -245,40 +243,22 @@ class DataProcessor:
     def extract_hourly_records(self, json_data, location_name=None):
         """
         Convert hourly JSON data to flat records list.
-        
-        Each record is a dictionary with:
-        - datetime: timestamp
-        - location metadata (city, lat, lon, timezone, elevation)
-        - all weather variables
-        
-        Args:
-            json_data (dict): API response JSON
-            location_name (str, optional): Name to add to each record
-        
-        Returns:
-            list: List of record dictionaries ready for database insertion
+        Timestamps remain as-is (UTC expected).
         """
-        # Validate response
         if json_data.get('error'):
             print(f"Error: {json_data.get('reason')}")
             return []
         
-        # Extract metadata
         metadata = self.extract_metadata(json_data)
-        
-        # Get hourly data section
         hourly_data = json_data.get('hourly', {})
         if not hourly_data:
             print("No hourly data found")
             return []
         
-        # Get time array
         timestamps = hourly_data.get('time', [])
-        
-        # Build records
         records = []
+        
         for i, timestamp in enumerate(timestamps):
-            # Start with timestamp and metadata
             record = {
                 'datetime': timestamp,
                 'city': location_name,
@@ -288,7 +268,6 @@ class DataProcessor:
                 'elevation': metadata.get('elevation')
             }
             
-            # Add all weather variables
             for variable, values in hourly_data.items():
                 if variable != 'time' and i < len(values):
                     record[variable] = values[i]
@@ -296,6 +275,51 @@ class DataProcessor:
             records.append(record)
         
         return records
+    
+    def convert_utc_to_local_with_dst_fix(self, records):
+        """
+        Convert UTC records to local time.
+        Fill missing 02:00 on spring forward with 01:00 data.
+        
+        Args:
+            records (list): List of records with UTC timestamps
+        
+        Returns:
+            list: Records with local timestamps, 24 hours per day guaranteed
+        """
+        from collections import defaultdict
+        by_city_date = defaultdict(dict)
+        
+        for record in records:
+            utc_dt = datetime.fromisoformat(record['datetime']).replace(tzinfo=self.utc_tz)
+            local_dt = utc_dt.astimezone(self.local_tz)
+            
+            city = record['city']
+            date_key = local_dt.date()
+            hour = local_dt.hour
+            
+            record_copy = record.copy()
+            record_copy['datetime'] = local_dt.strftime("%Y-%m-%dT%H:00")
+            record_copy['timezone'] = self.timezone
+            
+            by_city_date[(city, date_key)][hour] = record_copy
+        
+        final_records = []
+        
+        for (city, date_key), hours_dict in sorted(by_city_date.items()):
+            for hour in range(24):
+                if hour in hours_dict:
+                    final_records.append(hours_dict[hour])
+                elif hour == 2 and 1 in hours_dict:
+                    fake_record = hours_dict[1].copy()
+                    fake_record['datetime'] = f"{date_key}T02:00"
+                    final_records.append(fake_record)
+                elif hour == 2 and 3 in hours_dict:
+                    fake_record = hours_dict[3].copy()
+                    fake_record['datetime'] = f"{date_key}T02:00"
+                    final_records.append(fake_record)
+        
+        return final_records
     
     def extract_daily_records(self, json_data, location_name=None):
         """
@@ -371,12 +395,13 @@ class DataProcessor:
         
         return jmespath.search(query, json_data)
     
-    def process_multiple_locations_hourly(self, multi_location_data):
+    def process_multiple_locations_hourly(self, multi_location_data, convert_to_local=True):
         """
         Process multiple locations hourly data into combined records list.
         
         Args:
             multi_location_data (dict): Dictionary with location names as keys
+            convert_to_local (bool): If True, convert UTC to local time with DST fix
         
         Returns:
             list: Combined list of all hourly records from all locations
@@ -387,6 +412,10 @@ class DataProcessor:
             records = self.extract_hourly_records(json_data, location_name)
             all_records.extend(records)
             print(f"Processed {len(records)} hourly records for {location_name}")
+        
+        if convert_to_local:
+            all_records = self.convert_utc_to_local_with_dst_fix(all_records)
+            print(f"Converted to local time with DST fix: {len(all_records)} records")
         
         return all_records
     
@@ -616,7 +645,7 @@ if __name__ == "__main__":
     api = OpenMeteoAPI(output_folder='energy_weather_data')
     
     # Define date range 
-    start_date_hour = "2024-01-01"
+    start_date_hour = "2023-12-31"
     end_date_hour = "2024-12-31"
 
     start_date_day = "2015-01-01"
@@ -660,7 +689,7 @@ if __name__ == "__main__":
         cursor.execute(f"""
             DELETE FROM {table} 
             WHERE rowid NOT IN (
-                SELECT MIN(rowid) 
+                SELECT MAX(rowid) 
                 FROM {table} 
                 GROUP BY {time_col}, city
             )
