@@ -91,6 +91,7 @@ data_load = get_transp_api(
 
 final_data = process([data_generation, data_market, data_load])
 final_data = final_data.rename(columns={
+    "date": "datetime",
     "Price Document": "Energy prices",
     "System total load - Day ahead": "Total load forecast",
     "Solar generation - Solar - Wind and solar forecast - Day ahead": "Solar generation forecast",
