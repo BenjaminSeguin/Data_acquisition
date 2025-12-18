@@ -1,8 +1,11 @@
 import sqlite3
+import os
 
 # Check RTE database
-db_path = 'rte_energy.db'
-table = 'energy_data'
+script_dir = os.path.dirname(os.path.abspath(__file__))
+base_dir = os.path.dirname(script_dir)
+db_path = os.path.join(base_dir, 'Database', 'rte.db')
+table = 'rte_data'
 time_col = 'datetime'
 
 print(f"Checking database: {db_path}")

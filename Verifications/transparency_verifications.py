@@ -1,10 +1,13 @@
 import sqlite3
 import pandas as pd
+import os
 
 # Check transparency database
-db_path = 'energy_transparency_data.db'
-table = 'energy_data'
-time_col = 'date'
+script_dir = os.path.dirname(os.path.abspath(__file__))
+base_dir = os.path.dirname(script_dir)
+db_path = os.path.join(base_dir, 'Database', 'entsoe.db')
+table = 'entsoe_data'
+time_col = 'datetime'
 
 print(f"Checking database: {db_path}")
 print("=" * 60)

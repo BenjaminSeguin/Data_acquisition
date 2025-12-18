@@ -1,9 +1,12 @@
 import sqlite3
+import os
 
 # Check both databases
+script_dir = os.path.dirname(os.path.abspath(__file__))
+base_dir = os.path.dirname(script_dir)
 databases = [
-    ('energy_weather_data/energy_weather_hourly.db', 'weather_hourly', 'datetime'),
-    ('energy_weather_data/energy_weather_daily.db', 'weather_daily', 'date')
+    (os.path.join(base_dir, 'Database', 'weather_hourly.db'), 'weather_hourly', 'datetime'),
+    (os.path.join(base_dir, 'Database', 'weather_daily.db'), 'weather_daily', 'date')
 ]
 
 for db_path, table, time_col in databases:

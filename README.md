@@ -199,7 +199,7 @@ Scrapes energy data from RTE's website using Selenium.
 
 **Methods:**
 - `open_page()` - Initialize browser
-- `download_data(start_date, end_date, final_filename)` - Download data range
+- `download_data(start_date, end_date)` - Download data range
 - `close_page()` - Close browser
 
 **Date format:** DD/MM/YYYY (e.g., "01/01/2024")
@@ -220,7 +220,7 @@ from Functions.RTE_to_database import RTEDatabase
 # Download data
 rte = RTEAPI('output_folder')
 rte.open_page()
-rte.download_data("01/01/2024", "31/12/2024", final_filename="RTE_data.xls")
+rte.download_data("01/01/2024", "31/12/2024")
 rte.close_page()
 
 # Convert to database

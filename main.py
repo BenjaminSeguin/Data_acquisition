@@ -10,6 +10,8 @@ from Functions.transparency_api import *
 from Functions.utils import *
 
 OUTPUT_FOLDER = "Database"
+RTE_files = True
+Sharp_cut = True
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
 # OpenMeteo
@@ -33,7 +35,21 @@ hourly_data = api.fetch_multiple_locations_hourly(locations, start_date_hour, en
 hourly_records = api.process_multiple_locations_hourly(hourly_data)
 api.save_to_database(hourly_records, 'weather_hourly', 'weather_hourly.db')
 
-time.sleep(60)
+if Sharp_cut: #because Open-Meteo gives extra data outside requested range to handle timezones
+    conn = sqlite3.connect(f'{OUTPUT_FOLDER}/weather_hourly.db')
+    cursor = conn.cursor()
+    rows_to_delete = cursor.fetchall()
+    for row in rows_to_delete:
+        print(f"Deleting row with datetime: {row[0]}, city: {row[1]}")
+
+    cursor.execute(f"""
+        DELETE FROM weather_hourly 
+        WHERE datetime < '2024-01-01 00:00:00' OR datetime >= '2025-01-01 00:00:00'
+    """)
+    conn.commit()
+    conn.close()
+
+time.sleep(6)
 
 daily_data = api.fetch_multiple_locations_daily(locations, start_date_day, end_date_day)
 daily_records = api.process_multiple_locations_daily(daily_data)
@@ -51,14 +67,15 @@ for db_file, table, time_col in [('weather_hourly.db', 'weather_hourly', 'dateti
     conn.close()
 
 # RTE Scraper
-rte = RTEAPI(OUTPUT_FOLDER)
-rte.open_page()
-rte.download_data("01/01/2024", "31/12/2024", final_filename="RTE_data.xls")
-rte.close_page()
+if not RTE_files: # ~2sec per day. Better use already downloaded files if possible /!\ 
+    rte = RTEAPI(os.path.join(os.getcwd(), "Database", "RTE_daily_data"))
+    rte.open_page()
+    rte.download_data("01/01/2024", "31/12/2024")
+    rte.close_page()
 
 rte_db = RTEDatabase()
 rte_db.create_database_from_folder(
-    folder_path=OUTPUT_FOLDER,
+    folder_path=os.path.join(os.getcwd(), "Database", "RTE_daily_data"),
     db_path=f'{OUTPUT_FOLDER}/rte.db',
     file_pattern="RTE_*.xls",
     table_name="rte_data"
@@ -114,4 +131,14 @@ df_merged = df_merged.merge(df_entsoe, on='datetime', how='outer')
 
 conn = sqlite3.connect(f'{OUTPUT_FOLDER}/final.db')
 df_merged.to_sql('energy_data', conn, if_exists='replace', index=False)
+
+
+cursor = conn.cursor()
+cursor.execute("SELECT COUNT(*) FROM energy_data")
+total_records = cursor.fetchone()[0]
+cursor.execute("PRAGMA table_info(energy_data)")
+columns = cursor.fetchall()
+print(f"Number of columns in merged database: {len(columns)}")
+print(f"Total records in merged database: {total_records:,}")
 conn.close()
+print("\nFinal database 'final.db' created successfully in the Database folder.")
