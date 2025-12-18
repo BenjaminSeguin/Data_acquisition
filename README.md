@@ -35,11 +35,17 @@ security_token="YOUR_TOKEN_HERE"
 python main.py
 ```
 
+```bash
+python verif_all.py
+```
+
 This will:
 - Fetch weather data for 5 French cities (2024 hourly + 2015-2024 daily)
 - Scrape RTE power grid data (2024)
 - Download ENTSO-E energy market data (2024)
 - Merge everything into `Database/final.db`
+- Run the Verification functions to ensure each of the 3 sources DB has no duplicates
+- Run a global Verification function that ensures that final.db has no duplicates.
 
 ### 3. Output Files
 
