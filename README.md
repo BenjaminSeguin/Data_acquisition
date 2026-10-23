@@ -23,10 +23,10 @@ Additional requirement: ENTSO-E API security token ([register here](https://tran
 
 ### 1. Configure API Token
 
-Edit `main.py` and replace the ENTSO-E security token:
+Set your ENTSO-E security token as an environment variable:
 
-```python
-security_token="YOUR_TOKEN_HERE"
+```bash
+export ENTSOE_TOKEN="your-token"
 ```
 
 ### 2. Run the Pipeline

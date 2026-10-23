@@ -1,4 +1,5 @@
 import argparse
+import os
 import sqlite3
 import time
 from datetime import datetime
@@ -10,6 +11,11 @@ from Functions.transparency_api import *
 from Functions.utils import *
 
 OUTPUT_FOLDER = "Database"
+
+# ENTSO-E token is read from the environment, never hard-coded.
+ENTSOE_TOKEN = os.environ.get("ENTSOE_TOKEN")
+if not ENTSOE_TOKEN:
+    raise SystemExit("Set the ENTSOE_TOKEN environment variable (see README).")
 RTE_files = True
 Sharp_cut = True
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
@@ -87,7 +93,7 @@ data_generation = get_transp_api(
     opt_params={},
     domains={"in_Domain": "10YFR-RTE------C", "out_Domain": "10YFR-RTE------C"},
     periodStart="202312312300", periodEnd="202412312300",
-    security_token="be61c343-c4e4-4fcc-8b1f-5ebc0ea66a6f"
+    security_token=ENTSOE_TOKEN
 )
 
 data_market = get_transp_api(
@@ -95,7 +101,7 @@ data_market = get_transp_api(
     opt_params={},
     domains={"in_Domain": "10YFR-RTE------C", "out_Domain": "10YFR-RTE------C"},
     periodStart="202312312300", periodEnd="202412312300",
-    security_token="be61c343-c4e4-4fcc-8b1f-5ebc0ea66a6f"
+    security_token=ENTSOE_TOKEN
 )
 
 data_load = get_transp_api(
@@ -103,7 +109,7 @@ data_load = get_transp_api(
     opt_params={},
     domains={"outBiddingZone_Domain": "10YFR-RTE------C"},
     periodStart="202312312300", periodEnd="202412312300",
-    security_token="be61c343-c4e4-4fcc-8b1f-5ebc0ea66a6f"
+    security_token=ENTSOE_TOKEN
 )
 
 final_data = process([data_generation, data_market, data_load])
