@@ -280,7 +280,9 @@ if __name__ == "__main__":
     periodEnd = args.end_entsoe_api
 
     db_path = 'energy_transparency_data.db'
-    security_token = "be61c343-c4e4-4fcc-8b1f-5ebc0ea66a6f"
+    security_token = os.environ.get("ENTSOE_TOKEN")
+    if not security_token:
+        raise SystemExit("Set the ENTSOE_TOKEN environment variable (see README).")
 
     ### Generation: Generation Forecast for Wind and Solar
     req_params = {"documentType": "A69", "processType": "A01"}
